@@ -5,11 +5,14 @@ import numpy as np
 class IMutils:
 
     def isbw(img):
-        #img is a numpy.ndarray, loaded using cv2.imread
+        rgb_img = img[:, :, ::-1]
+        height, width = IMutils.cv_size(img)
         if len(img.shape) > 2:
-            looks_like_rgbbw = not False in ((img[:,:,0:1] == img[:,:,1:2]) == (img[:,:,1:2] ==  img[:,:,2:3]))
-            looks_like_hsvbw = not False in ((0 == img[:,:,0:1]) == (0 == img[:,:,1:2]))
-            return looks_like_rgbbw or looks_like_hsvbw
+            for x in range(0, width):
+                for y in range(0, height):
+                    if not (img[x, y, 0] == img[x, y, 1] == img[x, y, 2]):
+                        return False 
+            return True
         else:
             return True
 
@@ -91,6 +94,16 @@ class IMutils:
             x2 -= (x2-w)
             
         crop_img = image[y1:y2, x1:x2]
+
+        h, w = IMutils.cv_size(crop_img)
+        if h > w:
+            padding = h-w
+            crop_img = cv2.copyMakeBorder(crop_img,padding,0,0,0,cv2.BORDER_CONSTANT, 0)
+        elif w > h:
+            padding = w-h
+            crop_img = cv2.copyMakeBorder(crop_img,0,0,padding,0,cv2.BORDER_CONSTANT, 0)
+
+
         return crop_img
         
     def cv_size(img):

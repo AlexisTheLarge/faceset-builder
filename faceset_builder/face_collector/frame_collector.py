@@ -3,17 +3,21 @@ import cv2
 import os
 import sys
 import face_recognition
+from scipy.spatial import ConvexHull
 from tqdm import tqdm
 from .imutils import IMutils
+from .photo_collector import Photo_Collector
 
 class Frame_Collector:
 
-    def __init__(self, target_faces, tolerance=0.5, min_face_size=256, min_luminosity=10, max_luminosity=245):
+    def __init__(self, target_faces, tolerance=0.5, min_face_size=256, min_luminosity=10, max_luminosity=245, one_face=False, mask_faces=False):
         self.target_faces = target_faces
         self.tolerance = float(tolerance)
         self.min_face_size = int(round(min_face_size))
         self.min_luminosity = min_luminosity
         self.max_luminosity = max_luminosity
+        self.one_face = one_face
+        self.mask_faces = mask_faces
 
     def processVideoFile(self, file, outdir, scanrate=0.2, capturerate=5, sample_height=500, batch_size=32, buffer_size=-1):
         vCap = cv2.VideoCapture(file)
@@ -135,15 +139,29 @@ class Frame_Collector:
             raw_frame = raw_frames[frame_number_in_batch]
             rgb_frame = rgb_frames[frame_number_in_batch]
 
-            face_encodings = face_recognition.face_encodings(rgb_frame, face_locations)
+            s_height, s_width = IMutils.cv_size(rgb_frame)
+            o_height, o_width = IMutils.cv_size(raw_frame)
+            scale_factor = o_height/s_height
 
-            for fenc, floc in zip(face_encodings, face_locations):
+            face_encodings = face_recognition.face_encodings(rgb_frame, face_locations)
+            face_landmarks = face_recognition.face_landmarks(rgb_frame, face_locations)
+
+            face_overlay = np.zeros((o_width, o_height), np.uint8)
+            face_overlay.fill(255)
+            tgt_face_poly = None
+
+            crop_points = None
+            outfile = ""
+            for fenc, floc, flan in zip(face_encodings, face_locations, face_landmarks):
                 result = face_recognition.compare_faces(self.target_faces, fenc, self.tolerance)
 
                 #if the face found matches the target
                 if any(result):
                     target_found = True
-                    top, right, bottom, left = IMutils.scaleCoords(floc, IMutils.cv_size(rgb_frame), IMutils.cv_size(raw_frame))
+                    tgt_face_poly = Photo_Collector.get_face_mask(flan, (1.2, 1.2, 1.2), scale_factor)
+
+                    crop_points = IMutils.scaleCoords(floc, IMutils.cv_size(rgb_frame), IMutils.cv_size(raw_frame))
+                    top, right, bottom, left = crop_points
 
                     size = int(round(min(bottom-top, right-left)))
                     face = raw_frame[int(round(top)):int(round(bottom)), int(round(left)):int(round(right))]
@@ -151,23 +169,32 @@ class Frame_Collector:
 
                     if (size >= self.min_face_size):
 
-                        cropped = IMutils.cropAsPaddedSquare(raw_frame, top, bottom, left, right)
-
-                        if bottom-top > 512 or right-left > 512:
-                            try:
-                              cropped = cv2.resize(cropped, (512, 512))
-                            except:
-                              continue
-
                         #disqualified_dir = os.path.join(outdir,"2Dark_or_2Bright")
                         #os.makedirs(disqualified_dir, exist_ok=True)
                         #outfile = os.path.join(outdir, "frame_{0}.jpg".format(frame_number)) if luminance in range(self.min_luminosity,self.max_luminosity) else os.path.join(disqualified_dir, "frame_{0}.jpg".format(frame_number))
                         if luminance in range(self.min_luminosity,self.max_luminosity):
                             outfile = os.path.join(outdir, "frame_{0}.jpg".format(frame_number))
-                        else:
-                            continue
-                        
-                        IMutils.saveImage(cropped, outfile)
-                    
+                else:
+                    face_polygon = Photo_Collector.get_face_mask(flan, (0.8, 0.95, 0.95), scale_factor)
+                    cv2.fillConvexPoly(face_overlay, face_polygon.astype(int), 0)
+
+            if outfile != "":
+                cv2.fillConvexPoly(face_overlay, tgt_face_poly.astype(int), 255)
+
+                if (self.mask_faces):
+                    raw_frame = cv2.bitwise_and(raw_frame, raw_frame, mask=face_overlay)
+
+                top, right, bottom, left = crop_points
+                cropped = IMutils.cropAsPaddedSquare(raw_frame, top, bottom, left, right)
+                if bottom-top > 512 or right-left > 512:
+                    try:
+                        cropped = cv2.resize(cropped, (512, 512))
+                    except:
+                      continue
+                
+                if not IMutils.isbw(cropped):
+                    if self.one_face and Photo_Collector.has_multiple_faces(cropped):
+                        break
+                    IMutils.saveImage(cropped, outfile)
 
         return target_found
