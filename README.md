@@ -18,7 +18,6 @@ Faceset Builder is a command line tool for extracting faces from videos and phot
  - opencv-python
  - numpy
  - scipy
- - Distance
  - tqdm
  - click
 
