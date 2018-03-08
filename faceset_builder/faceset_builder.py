@@ -44,7 +44,7 @@ def encodeFaces(face_dir):
 
 def processImages(file_list, face_encodings, args):
     min_lumen, max_lumen = args['luminosity_range']
-    pc = Photo_Collector(face_encodings, args['tolerance'], args['min_face_size'], min_lumen, max_lumen, args['one_face'], args['mask_faces'])
+    pc = Photo_Collector(face_encodings, args['tolerance'], args['min_face_size'], args['crop_size'], min_lumen, max_lumen, args['one_face'], args['mask_faces'])
 
     image_dir = os.path.join(args['output_dir'], "images")
     dupedir = os.path.join(image_dir, "duplicates")
@@ -65,7 +65,7 @@ def processImages(file_list, face_encodings, args):
 
 def processVideos(file_list, face_encodings, args):
     min_lumen, max_lumen = args['luminosity_range']
-    fc = Frame_Collector(face_encodings, args['tolerance'], args['min_face_size'], min_lumen, max_lumen, args['one_face'], args['mask_faces'])
+    fc = Frame_Collector(face_encodings, args['tolerance'], args['min_face_size'], args['crop_size'], min_lumen, max_lumen, args['one_face'], args['mask_faces'])
 
     video_dir = os.path.join(args['output_dir'], "videos")
     os.makedirs(video_dir, exist_ok=True)
@@ -158,6 +158,9 @@ def faceset_builder():
 @click.argument('output_dir')
 @click.option('--tolerance', '-t', type=float, default=0.5, help='Threshold for face comparison. Default is 0.5.')
 @click.option('--min-face-size', type=int, default=256, help='Minimum size in pixels for faces to extract. Default is 256.')
+
+@click.option('--crop-size', type=int, default=512, help='Cropped images larger than this will be scaled down. Must be at least 1.5 times the size of --min-face-size. Default is 512.')
+
 @click.option('--one-face', is_flag=True, help='Discard any cropped images containing more than one face.')
 @click.option('--mask-faces', is_flag=True, help='Attempt to black out unwanted faces.')
 
@@ -172,6 +175,9 @@ def faceset_builder():
 #@click.option('--caps', is_flag=True, help='uppercase the output')
 def collect(**kwargs):
     """Go through video files and photographs in OUTPUT_DIR and extract faces matching those found in REFERENCE_DIR. Extracted faces will be placed in OUTPUT_DIR."""
+    if (kwargs['min_face_size']*1.5) > kwargs['crop_size']:
+        print("ValueError: --crop-size must be larger than --min-face-size*1.5 ({0})".format(int(kwargs['min_face_size']*1.5)))
+        exit()
     collector(**kwargs)
     
 

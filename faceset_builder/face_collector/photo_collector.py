@@ -10,10 +10,11 @@ from .imutils import IMutils
 
 class Photo_Collector:
 
-    def __init__(self, target_faces, tolerance=0.5, min_face_size=256, min_luminosity=10, max_luminosity=245, one_face=False, mask_faces=False):
+    def __init__(self, target_faces, tolerance=0.5, min_face_size=256, crop_size=512, min_luminosity=10, max_luminosity=245, one_face=False, mask_faces=False):
         self.target_faces = target_faces
         self.tolerance = float(tolerance)
         self.min_face_size = int(round(min_face_size))
+        self.crop_size = crop_size
         self.min_luminosity = min_luminosity
         self.max_luminosity = max_luminosity
         self.one_face = one_face
@@ -129,9 +130,10 @@ class Photo_Collector:
 
                 top, right, bottom, left = crop_points
                 cropped = IMutils.cropAsPaddedSquare(img, top, bottom, left, right)
-                if bottom-top > 512 or right-left > 512:
+                h, w = IMutils.cv_size(cropped)
+                if h > self.crop_size or w > self.crop_size:
                     try:
-                        cropped = cv2.resize(cropped, (512, 512))
+                        cropped = cv2.resize(cropped, (self.crop_size, self.crop_size))
                     except:
                       continue
                 if not IMutils.isbw(cropped):

@@ -62,6 +62,10 @@ Supported options for the ```collect``` command:
       --min-face-size INTEGER        Minimum size in pixels for faces to extract.
                                      Default is 256.
 
+      --crop-size INTEGER            Cropped images larger than this will be
+                                     scaled down. Must be at least 1.5 times the
+                                     size of --min-face-size. Default is 512.
+
       --one-face                     Discard any cropped images containing more
                                      than one face.
 
