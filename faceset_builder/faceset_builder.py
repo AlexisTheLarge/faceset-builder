@@ -36,9 +36,10 @@ def encodeFaces(face_dir):
     face_encodings = []
     ref_faces = os.listdir(face_dir)
     for file in tqdm(ref_faces):
-        target_face = face_recognition.face_encodings(face_recognition.load_image_file(os.path.join(face_dir, file)))
-        if len(target_face) > 0:
-            face_encodings.append(target_face[0])
+        if file.lower().endswith(('.jpg', '.jpeg', '.png', '.bmp')):
+            target_face = face_recognition.face_encodings(face_recognition.load_image_file(os.path.join(face_dir, file)))
+            if len(target_face) > 0:
+                face_encodings.append(target_face[0])
     return face_encodings
 
 def processImages(file_list, face_encodings, args):
