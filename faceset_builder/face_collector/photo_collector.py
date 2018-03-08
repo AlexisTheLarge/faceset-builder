@@ -6,7 +6,8 @@ import distance
 import face_recognition
 from scipy.spatial import ConvexHull
 from tqdm import tqdm
-from .imutils import IMutils
+from . import imutils
+from . import utils
 
 class Photo_Collector:
 
@@ -19,10 +20,6 @@ class Photo_Collector:
         self.max_luminosity = max_luminosity
         self.one_face = one_face
         self.mask_faces = mask_faces
-
-        
-    def get_num_bits_different(self, hash1, hash2):
-        return bin(hash1 ^ hash2).count('1')
 
 
     def cleanDuplicates(self, files, outdir, tolerance):
@@ -38,18 +35,18 @@ class Photo_Collector:
             
             img = cv2.imread(file)
             try:
-                hs = IMutils.dhash(img)
+                hs = imutils.dhash(img)
             except:
                 #remove corrupted file
                 os.remove(file)
                 continue
-            h, w = IMutils.cv_size(img)
+            h, w = imutils.cv_size(img)
             size = int(round(h*w))
 
             smallest = False
             duplicate_name = ""
             for key, value in list(hashes.items()):
-                if self.get_num_bits_different(value[0], hs) <= tolerance:
+                if utils.get_num_bits_different(value[0], hs) <= tolerance:
                     if value[1] < size:
                         del hashes[key]
                         name = "duplicateof_{0}".format(os.path.basename(file))
@@ -81,10 +78,10 @@ class Photo_Collector:
             
             img = cv2.imread(file)
             rgb_img = img[:, :, ::-1]
-            sample = IMutils.downsampleToHeight(rgb_img, sample_height)
+            sample = imutils.downsampleToHeight(rgb_img, sample_height)
 
-            s_height, s_width = IMutils.cv_size(sample)
-            o_height, o_width = IMutils.cv_size(img)
+            s_height, s_width = imutils.cv_size(sample)
+            o_height, o_width = imutils.cv_size(img)
             scale_factor = o_height/s_height
 
             face_locations = face_recognition.face_locations(sample, number_of_times_to_upsample=0, model="cnn")
@@ -104,12 +101,12 @@ class Photo_Collector:
                 if any(result):
                     tgt_face_poly = self.get_face_mask(flan, (1.2, 1.2, 1.2), scale_factor)
 
-                    crop_points = IMutils.scaleCoords(floc, IMutils.cv_size(sample), IMutils.cv_size(img))
+                    crop_points = imutils.scaleCoords(floc, imutils.cv_size(sample), imutils.cv_size(img))
                     top, right, bottom, left = crop_points
 
                     size = int(round(min(bottom-top, right-left)))
                     face = img[int(round(top)):int(round(bottom)), int(round(left)):int(round(right))]
-                    luminance = int(round(IMutils.getLuminosity(face)))
+                    luminance = int(round(imutils.getLuminosity(face)))
 
                     if (size >= self.min_face_size):
 
@@ -129,17 +126,17 @@ class Photo_Collector:
                     img = cv2.bitwise_and(img, img, mask=face_overlay)
 
                 top, right, bottom, left = crop_points
-                cropped = IMutils.cropAsPaddedSquare(img, top, bottom, left, right)
-                h, w = IMutils.cv_size(cropped)
+                cropped = imutils.cropAsPaddedSquare(img, top, bottom, left, right)
+                h, w = imutils.cv_size(cropped)
                 if h > self.crop_size or w > self.crop_size:
                     try:
                         cropped = cv2.resize(cropped, (self.crop_size, self.crop_size))
                     except:
                       continue
-                if not IMutils.isbw(cropped):
+                if not imutils.isbw(cropped):
                     if self.one_face and self.has_multiple_faces(cropped):
                         break
-                    IMutils.saveImage(cropped, outfile)
+                    imutils.saveImage(cropped, outfile)
 
     @staticmethod
     def get_face_mask(landmarks, landmarks_scale, target_scale):

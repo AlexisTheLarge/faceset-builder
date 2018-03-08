@@ -10,9 +10,8 @@ import click
 import re
 from tqdm import tqdm
 from shutil import copyfile
-from faceset_builder.face_collector.frame_collector import Frame_Collector
-from faceset_builder.face_collector.photo_collector import Photo_Collector
-from faceset_builder.face_collector.imutils import IMutils
+from faceset_builder import Frame_Collector
+from faceset_builder import Photo_Collector
 from string import ascii_lowercase
 from itertools import product
 

@@ -5,7 +5,7 @@ import sys
 import face_recognition
 from scipy.spatial import ConvexHull
 from tqdm import tqdm
-from .imutils import IMutils
+from . import imutils
 from .photo_collector import Photo_Collector
 
 class Frame_Collector:
@@ -67,7 +67,7 @@ class Frame_Collector:
             rgb_frame = frame[:, :, ::-1]
             
             # Downsample frame to increase face_recognition speed, can result in fewer detections but we get plenty of frames from video anyway.
-            lowres_frame = IMutils.downsampleToHeight(rgb_frame, sample_height)
+            lowres_frame = imutils.downsampleToHeight(rgb_frame, sample_height)
             
             if not target_found:
                 if len(scan_buffer) == buffer_size:
@@ -83,7 +83,7 @@ class Frame_Collector:
                     for idx, buffered_frame in enumerate(scan_buffer):
                         if idx % capture_mult == 0:
                             buf_frame_rgb = buffered_frame[:, :, ::-1]
-                            buf_frame_lowres = IMutils.downsampleToHeight(buf_frame_rgb, sample_height)
+                            buf_frame_lowres = imutils.downsampleToHeight(buf_frame_rgb, sample_height)
                             buffer_batch_rgb.append(buf_frame_lowres)
                             buffer_batch_raw.append(buffered_frame)
 
@@ -140,8 +140,8 @@ class Frame_Collector:
             raw_frame = raw_frames[frame_number_in_batch]
             rgb_frame = rgb_frames[frame_number_in_batch]
 
-            s_height, s_width = IMutils.cv_size(rgb_frame)
-            o_height, o_width = IMutils.cv_size(raw_frame)
+            s_height, s_width = imutils.cv_size(rgb_frame)
+            o_height, o_width = imutils.cv_size(raw_frame)
             scale_factor = o_height/s_height
 
             face_encodings = face_recognition.face_encodings(rgb_frame, face_locations)
@@ -161,12 +161,12 @@ class Frame_Collector:
                     target_found = True
                     tgt_face_poly = Photo_Collector.get_face_mask(flan, (1.2, 1.2, 1.2), scale_factor)
 
-                    crop_points = IMutils.scaleCoords(floc, IMutils.cv_size(rgb_frame), IMutils.cv_size(raw_frame))
+                    crop_points = imutils.scaleCoords(floc, imutils.cv_size(rgb_frame), imutils.cv_size(raw_frame))
                     top, right, bottom, left = crop_points
 
                     size = int(round(min(bottom-top, right-left)))
                     face = raw_frame[int(round(top)):int(round(bottom)), int(round(left)):int(round(right))]
-                    luminance = int(round(IMutils.getLuminosity(face)))
+                    luminance = int(round(imutils.getLuminosity(face)))
 
                     if (size >= self.min_face_size):
 
@@ -186,17 +186,17 @@ class Frame_Collector:
                     raw_frame = cv2.bitwise_and(raw_frame, raw_frame, mask=face_overlay)
 
                 top, right, bottom, left = crop_points
-                cropped = IMutils.cropAsPaddedSquare(raw_frame, top, bottom, left, right)
-                h, w = IMutils.cv_size(cropped)
+                cropped = imutils.cropAsPaddedSquare(raw_frame, top, bottom, left, right)
+                h, w = imutils.cv_size(cropped)
                 if h > self.crop_size or w > self.crop_size:
                     try:
                         cropped = cv2.resize(cropped, (self.crop_size, self.crop_size))
                     except:
                       continue
                 
-                if not IMutils.isbw(cropped):
+                if not imutils.isbw(cropped):
                     if self.one_face and Photo_Collector.has_multiple_faces(cropped):
                         break
-                    IMutils.saveImage(cropped, outfile)
+                    imutils.saveImage(cropped, outfile)
 
         return target_found
