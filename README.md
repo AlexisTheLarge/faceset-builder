@@ -90,6 +90,6 @@ Supported options for the ```collect``` command:
 
 # License
 
-Faceset Builder is licensed under the MIT License (see [LICENSE](LICENSE))
+Faceset Builder is licensed under the Mozilla Public License Version 2.0 (see [LICENSE](LICENSE))
 
 
