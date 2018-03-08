@@ -2,6 +2,10 @@
 
 Faceset Builder is a command line tool for extracting faces from videos and photos.
 
+
+[![Pyhton version][python-version]](https://www.python.org/) [![License][license]](LICENSE)
+
+
 ## Requirements
 
 ### Environment
@@ -91,5 +95,8 @@ Supported options for the ```collect``` command:
 # License
 
 Faceset Builder is licensed under the Mozilla Public License Version 2.0 (see [LICENSE](LICENSE))
+
+[python-version]: <https://img.shields.io/badge/python-3.5%2B-2b5b84.svg>
+[license]: <https://img.shields.io/github/license/AlexisTheLarge/faceset-builder.svg>
 
 
