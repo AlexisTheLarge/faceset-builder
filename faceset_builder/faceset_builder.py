@@ -75,7 +75,7 @@ def processVideos(file_list, face_encodings, args):
         os.makedirs(file_dir, exist_ok=True)
 
         print("Extracting faces from {0}...".format(os.path.basename(file)))
-        fc.processVideoFile(file, file_dir, args['scan_rate'], args['capture_rate'], args['sample_height'], args['batch_size'], args['buffer_size'])
+        fc.processVideoFile(file, file_dir, args['scan_rate'], args['capture_rate'], args['sample_height'], args['batch_size'], args['buffer_size'], args['greedy'])
         print("Done!")
     
 
@@ -170,6 +170,7 @@ def faceset_builder():
 @click.option('--sample-height', type=int, default=500, help="Height in pixel to downsample the image/frame to before running facial recognition. Default is 500. (AFFECTS VRAM)")
 @click.option('--batch-size', type=int, default=32, help="Number of video frames to run facial recognition on per batch. Default is 32. (AFFECTS VRAM)")
 @click.option('--buffer-size', type=int, default=-1, help='Number of frames to buffer between each scan. Default is the number of frames in one scan interval. (AFFECTS RAM)')
+@click.option('--greedy', is_flag=True, help="While scanning, consider face detected even if it's smaller than --min-face-size. Might capture a few more faces at a potential performance loss.")
 
 #@click.option('--caps', is_flag=True, help='uppercase the output')
 def collect(**kwargs):

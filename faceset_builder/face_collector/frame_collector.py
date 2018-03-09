@@ -13,11 +13,11 @@ class Frame_Collector(Collector):
     def __init__(self, target_faces, tolerance=0.5, min_face_size=256, crop_size=512, min_luminosity=10, max_luminosity=245, one_face=False, mask_faces=False):
         Collector.__init__(self, target_faces, tolerance, min_face_size, crop_size, min_luminosity, max_luminosity, one_face, mask_faces )
 
-    def processVideoFile(self, file, outdir, scanrate=0.2, capturerate=5, sample_height=500, batch_size=32, buffer_size=-1):
+    def processVideoFile(self, file, outdir, scanrate=0.2, capturerate=5, sample_height=500, batch_size=32, buffer_size=-1, greedy=False):
         vCap = cv2.VideoCapture(file)
 
-        video_h = vCap.get(4)
-        video_w = vCap.get(3)
+        #video_h = vCap.get(4)
+        #video_w = vCap.get(3)
         video_fps = vCap.get(cv2.CAP_PROP_FPS)
 
         video_total_frames = int(vCap.get(cv2.CAP_PROP_FRAME_COUNT))
@@ -67,7 +67,7 @@ class Frame_Collector(Collector):
                     scan_buffer = []
                 scan_buffer.append(frame)
                 if frameId % scan_mult == 0:
-                    target_found = self.scanFrame(lowres_frame)
+                    target_found = self.scanFrame(lowres_frame, frame, greedy)
             else:
                 # Process buffer
                 if len(scan_buffer) > 0:
@@ -109,7 +109,7 @@ class Frame_Collector(Collector):
         vCap.release()
 
 
-    def scanFrame(self, rgb_frame):
+    def scanFrame(self, rgb_frame, raw_frame, greedy):
         
         face_locations = face_recognition.face_locations(rgb_frame, number_of_times_to_upsample=0, model="cnn")
         face_encodings = face_recognition.face_encodings(rgb_frame, face_locations)
@@ -119,6 +119,11 @@ class Frame_Collector(Collector):
 
             #if the face found matches the target
             if any(result):
+                if not greedy:
+                    top, right, bottom, left = imutils.scaleCoords(floc, imutils.cv_size(rgb_frame), imutils.cv_size(raw_frame))
+                    if (int(round(min(bottom-top, right-left))) < self.min_face_size):
+                        return False
+
                 return True
 
 

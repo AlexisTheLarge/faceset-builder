@@ -92,6 +92,11 @@ Supported options for the ```collect``` command:
                                      Default is the number of frames in one scan
                                      interval. (AFFECTS RAM)
 
+      --greedy                       While scanning, consider face detected even
+                                     if it's smaller than --min-face-size. Might
+                                     capture a few more faces at a potential
+                                     performance loss.
+
       -h, --help                     Show this message and exit.
 
 
