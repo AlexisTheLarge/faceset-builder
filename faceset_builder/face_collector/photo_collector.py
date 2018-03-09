@@ -69,7 +69,7 @@ class Photo_Collector:
     def processPhotos(self, files, outdir, sample_height=500):
         total = len(files)
         counter = 0
-        
+
         for file in tqdm(files):
             counter += 1
             #progress = (counter/total)*100;
@@ -92,50 +92,66 @@ class Photo_Collector:
             tgt_face_poly = None
 
             crop_points = None
-            outfile = ""
+            
             for fenc, floc, flan in zip(face_encodings, face_locations, face_landmarks):
                 result = face_recognition.compare_faces(self.target_faces, fenc, self.tolerance)
 
                 #if the face found matches the target
                 if any(result):
-                    tgt_face_poly = self.get_face_mask(flan, (1.2, 1.2, 1.2), scale_factor)
-
                     crop_points = imutils.scaleCoords(floc, imutils.cv_size(sample), imutils.cv_size(img))
-                    top, right, bottom, left = crop_points
 
-                    size = int(round(min(bottom-top, right-left)))
-                    face = img[int(round(top)):int(round(bottom)), int(round(left)):int(round(right))]
-                    luminance = int(round(imutils.getLuminosity(face)))
-
-                    if (size >= self.min_face_size):
-
-                        #disqualified_dir = os.path.join(outdir,"2Dark_or_2Bright")
-                        #os.makedirs(disqualified_dir, exist_ok=True)
-                        #outfile = os.path.join(outdir, "img_{0}.jpg".format(counter)) if luminance in range(self.min_luminosity,self.max_luminosity) else os.path.join(disqualified_dir, "img_{0}.jpg".format(counter))
-                        if luminance in range(self.min_luminosity,self.max_luminosity):
-                            outfile = os.path.join(outdir, "img_{0}.jpg".format(counter))
+                    if self.mask_faces:
+                        tgt_face_poly = self.get_face_mask(flan, (1.2, 1.2, 1.2), scale_factor)
+                    
+                    #disqualified_dir = os.path.join(outdir,"2Dark_or_2Bright")
+                    #os.makedirs(disqualified_dir, exist_ok=True)
                 else:
-                    face_polygon = self.get_face_mask(flan, (0.8, 0.95, 0.95), scale_factor)
-                    cv2.fillConvexPoly(face_overlay, face_polygon.astype(int), 0)
+                    if self.mask_faces:
+                        face_polygon = self.get_face_mask(flan, (0.8, 0.95, 0.95), scale_factor)
+                        cv2.fillConvexPoly(face_overlay, face_polygon.astype(int), 0)
+            
+            if crop_points != None:
+                if self.mask_faces:
+                    cv2.fillConvexPoly(face_overlay, tgt_face_poly.astype(int), 255)
 
-            if outfile != "":
-                cv2.fillConvexPoly(face_overlay, tgt_face_poly.astype(int), 255)
-
-                if (self.mask_faces):
+                if self.mask_faces:
                     img = cv2.bitwise_and(img, img, mask=face_overlay)
 
                 top, right, bottom, left = crop_points
+
                 cropped = imutils.cropAsPaddedSquare(img, top, bottom, left, right)
+
                 h, w = imutils.cv_size(cropped)
                 if h > self.crop_size or w > self.crop_size:
                     try:
                         cropped = cv2.resize(cropped, (self.crop_size, self.crop_size))
                     except:
                       continue
-                if not imutils.isbw(cropped):
-                    if self.one_face and self.has_multiple_faces(cropped):
-                        break
+
+                face = img[int(round(top)):int(round(bottom)), int(round(left)):int(round(right))]
+
+                if self.validate_image(cropped, face):
+                    outfile = os.path.join(outdir, "img_{0}.jpg".format(counter))
                     imutils.saveImage(cropped, outfile)
+
+
+
+    def validate_image(self, cropped_img, face):
+        face_h, face_w = imutils.cv_size(face)
+        face_size = int(round(min(face_h, face_w)))
+        luminance = int(round(imutils.getLuminosity(face)))
+        #lapliance =
+        #canny =
+
+        if self.one_face and self.has_multiple_faces(cropped_img):
+            return False
+
+        if (face_size < self.min_face_size) or (not self.min_luminosity <= luminance <= self.max_luminosity) or imutils.isbw(cropped_img):
+            return False
+
+        return True
+
+
 
     @staticmethod
     def get_face_mask(landmarks, landmarks_scale, target_scale):
