@@ -5,20 +5,13 @@ import sys
 import face_recognition
 from scipy.spatial import ConvexHull
 from tqdm import tqdm
+from .collector import Collector
 from . import imutils
-from .photo_collector import Photo_Collector
 
-class Frame_Collector:
+class Frame_Collector(Collector):
 
     def __init__(self, target_faces, tolerance=0.5, min_face_size=256, crop_size=512, min_luminosity=10, max_luminosity=245, one_face=False, mask_faces=False):
-        self.target_faces = target_faces
-        self.tolerance = float(tolerance)
-        self.min_face_size = int(round(min_face_size))
-        self.crop_size = crop_size
-        self.min_luminosity = min_luminosity
-        self.max_luminosity = max_luminosity
-        self.one_face = one_face
-        self.mask_faces = mask_faces
+        Collector.__init__(self, target_faces, tolerance, min_face_size, crop_size, min_luminosity, max_luminosity, one_face, mask_faces )
 
     def processVideoFile(self, file, outdir, scanrate=0.2, capturerate=5, sample_height=500, batch_size=32, buffer_size=-1):
         vCap = cv2.VideoCapture(file)
@@ -140,63 +133,7 @@ class Frame_Collector:
             raw_frame = raw_frames[frame_number_in_batch]
             rgb_frame = rgb_frames[frame_number_in_batch]
 
-            s_height, s_width = imutils.cv_size(rgb_frame)
-            o_height, o_width = imutils.cv_size(raw_frame)
-            scale_factor = o_height/s_height
-
-            face_encodings = face_recognition.face_encodings(rgb_frame, face_locations)
-            face_landmarks = face_recognition.face_landmarks(rgb_frame, face_locations)
-
-            face_overlay = np.zeros((o_width, o_height), np.uint8)
-            face_overlay.fill(255)
-            tgt_face_poly = None
-
-            crop_points = None
-            outfile = ""
-            for fenc, floc, flan in zip(face_encodings, face_locations, face_landmarks):
-                result = face_recognition.compare_faces(self.target_faces, fenc, self.tolerance)
-
-                #if the face found matches the target
-                if any(result):
-                    target_found = True
-                    tgt_face_poly = Photo_Collector.get_face_mask(flan, (1.2, 1.2, 1.2), scale_factor)
-
-                    crop_points = imutils.scaleCoords(floc, imutils.cv_size(rgb_frame), imutils.cv_size(raw_frame))
-                    top, right, bottom, left = crop_points
-
-                    size = int(round(min(bottom-top, right-left)))
-                    face = raw_frame[int(round(top)):int(round(bottom)), int(round(left)):int(round(right))]
-                    luminance = int(round(imutils.getLuminosity(face)))
-
-                    if (size >= self.min_face_size):
-
-                        #disqualified_dir = os.path.join(outdir,"2Dark_or_2Bright")
-                        #os.makedirs(disqualified_dir, exist_ok=True)
-                        #outfile = os.path.join(outdir, "frame_{0}.jpg".format(frame_number)) if luminance in range(self.min_luminosity,self.max_luminosity) else os.path.join(disqualified_dir, "frame_{0}.jpg".format(frame_number))
-                        if luminance in range(self.min_luminosity,self.max_luminosity):
-                            outfile = os.path.join(outdir, "frame_{0}.jpg".format(frame_number))
-                else:
-                    face_polygon = Photo_Collector.get_face_mask(flan, (0.8, 0.95, 0.95), scale_factor)
-                    cv2.fillConvexPoly(face_overlay, face_polygon.astype(int), 0)
-
-            if outfile != "":
-                cv2.fillConvexPoly(face_overlay, tgt_face_poly.astype(int), 255)
-
-                if (self.mask_faces):
-                    raw_frame = cv2.bitwise_and(raw_frame, raw_frame, mask=face_overlay)
-
-                top, right, bottom, left = crop_points
-                cropped = imutils.cropAsPaddedSquare(raw_frame, top, bottom, left, right)
-                h, w = imutils.cv_size(cropped)
-                if h > self.crop_size or w > self.crop_size:
-                    try:
-                        cropped = cv2.resize(cropped, (self.crop_size, self.crop_size))
-                    except:
-                      continue
-                
-                if not imutils.isbw(cropped):
-                    if self.one_face and Photo_Collector.has_multiple_faces(cropped):
-                        break
-                    imutils.saveImage(cropped, outfile)
+            outfile = os.path.join(outdir, "frame_{0}.jpg".format(frame_number))
+            self.processImage(raw_frame, rgb_frame, outfile)
 
         return target_found
