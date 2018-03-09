@@ -29,10 +29,10 @@ setup(
     # Dependent packages (distributions)
     install_requires=[
         "click",
-        "Distance",
         "opencv_python",
         "tqdm",
         "face_recognition",
         "numpy",
+        "scipy"
     ],
 )
