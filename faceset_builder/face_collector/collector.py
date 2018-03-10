@@ -1,6 +1,7 @@
 import numpy as np
 import sys
 import os
+import cv2
 import face_recognition
 from scipy.spatial import ConvexHull
 from tqdm import tqdm
