@@ -1,7 +1,6 @@
 import numpy as np
 import cv2
 import os
-import sys
 import face_recognition
 from scipy.spatial import ConvexHull
 from tqdm import tqdm
@@ -10,14 +9,12 @@ from . import imutils
 
 class Frame_Collector(Collector):
 
-    def __init__(self, target_faces, tolerance=0.5, min_face_size=256, crop_size=512, min_luminosity=10, max_luminosity=245, one_face=False, mask_faces=False):
-        Collector.__init__(self, target_faces, tolerance, min_face_size, crop_size, min_luminosity, max_luminosity, one_face, mask_faces )
+    def __init__(self, target_faces, tolerance=0.5, min_face_size=256, crop_size=512, min_luminosity=10, max_luminosity=245, laplacian_threshold=0, one_face=False, mask_faces=False, save_invalid=False):
+        Collector.__init__(self, target_faces, tolerance, min_face_size, crop_size, min_luminosity, max_luminosity, laplacian_threshold, one_face, mask_faces, save_invalid )
 
     def processVideoFile(self, file, outdir, scanrate=0.2, capturerate=5, sample_height=500, batch_size=32, buffer_size=-1, greedy=False):
         vCap = cv2.VideoCapture(file)
 
-        #video_h = vCap.get(4)
-        #video_w = vCap.get(3)
         video_fps = vCap.get(cv2.CAP_PROP_FPS)
 
         video_total_frames = int(vCap.get(cv2.CAP_PROP_FRAME_COUNT))
@@ -51,10 +48,7 @@ class Frame_Collector(Collector):
                 
             frame_count_all+=1
 
-            #progress = (frame_count_all/video_total_frames)*100;
-            #sys.stdout.write("\r{0:.3g}% \t".format(progress))
             pbar.update(1)
-
 
             # Convert to RGB for face_recognition
             rgb_frame = frame[:, :, ::-1]

@@ -36,7 +36,6 @@ def getCannySharpness(image):
     
     #Count the number of pixel representing an edge
     nCountCanny = cv2.countNonZero(edges);
-    #print(nCountCanny)
 
     # Compute a sharpness grade:
     # < 1.5 = blurred, in movement
@@ -47,6 +46,13 @@ def getCannySharpness(image):
     return dSharpness
 
 def getLaplacianVariance(image):
+    # compute the Laplacian of the image and then return the focus
+    # measure, which is simply the variance of the Laplacian
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    return cv2.Laplacian(gray, cv2.CV_64F).var()
+    #return np.max(cv2.convertScaleAbs(cv2.Laplacian(gray,3)))
+
+def getLaplacianVarianceAbsolute(image):
     # compute the Laplacian of the image and then return the focus
     # measure, which is simply the variance of the Laplacian
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)

@@ -1,7 +1,6 @@
 import numpy as np
 import sys
 import os
-import cv2
 import face_recognition
 from scipy.spatial import ConvexHull
 from tqdm import tqdm
@@ -9,15 +8,21 @@ from . import imutils
 
 class Collector:
 
-    def __init__(self, target_faces, tolerance=0.5, min_face_size=256, crop_size=512, min_luminosity=10, max_luminosity=245, one_face=False, mask_faces=False):
+    def __init__(self, target_faces, tolerance=0.5, min_face_size=256, crop_size=512, min_luminosity=10, max_luminosity=245, laplacian_threshold=0, one_face=False, mask_faces=False, save_invalid=False):
         self.target_faces = target_faces
         self.tolerance = float(tolerance)
         self.min_face_size = int(round(min_face_size))
         self.crop_size = int(round(crop_size))
         self.min_luminosity = int(round(min_luminosity))
         self.max_luminosity = int(round(max_luminosity))
+        self.laplacian_threshold = float(laplacian_threshold)
         self.one_face = one_face
         self.mask_faces = mask_faces
+        self.save_invalid = save_invalid
+
+
+    def setInvalidDir(self, invalid_dir=None):
+        self._invalid_dir = invalid_dir
 
     def processImage(self, img, sample, outfile, face_locations=None):
         s_height, s_width = imutils.cv_size(sample)
@@ -70,26 +75,52 @@ class Collector:
 
             face = img[int(round(top)):int(round(bottom)), int(round(left)):int(round(right))]
 
-            if self.validate_image(cropped, face):
-                #outfile = os.path.join(outdir, "img_{0}.jpg".format(counter))
+            if self.validate_image(cropped, face, outfile):
                 imutils.saveImage(cropped, outfile)
 
-    def validate_image(self, cropped_img, face):
+    def validate_image(self, cropped_img, face, outfile):
         face_h, face_w = imutils.cv_size(face)
         face_size = int(round(min(face_h, face_w)))
         luminance = int(round(imutils.getLuminosity(face)))
-        #lapliance =
-        #canny =
+        laplacian = imutils.getLaplacianVariance(face)
 
-        if self.one_face and self.has_multiple_faces(cropped_img):
-            return False
+        if self.save_invalid:
+            fname = "{0}_{1}".format(os.path.basename(os.path.dirname(outfile)), os.path.basename(outfile))
 
-        if (face_size < self.min_face_size) or (not self.min_luminosity <= luminance <= self.max_luminosity) or imutils.isbw(cropped_img):
-            return False
+            small_dir = os.path.join(self._invalid_dir, "small")
+            bad_brightness_dir = os.path.join(self._invalid_dir, "bad_brightness")
+            bw_dir = os.path.join(self._invalid_dir, "grayscale")
+            blurry_dir = os.path.join(self._invalid_dir, "blurry")
+            multiple_faces_dir = os.path.join(self._invalid_dir, "multiple_faces")
+
+            of = None
+            if face_size < self.min_face_size:
+            	os.makedirs(small_dir, exist_ok=True)
+            	of = os.path.join(small_dir, fname)
+            elif not self.min_luminosity <= luminance <= self.max_luminosity:
+            	os.makedirs(bad_brightness_dir, exist_ok=True)
+            	of = os.path.join(bad_brightness_dir, fname)
+            elif laplacian < self.laplacian_threshold:
+            	os.makedirs(blurry_dir, exist_ok=True)
+            	of = os.path.join(blurry_dir, fname)
+            elif imutils.isbw(cropped_img):
+            	os.makedirs(bw_dir, exist_ok=True)
+            	of = os.path.join(bw_dir, fname)
+            elif self.one_face and self.has_multiple_faces(cropped_img):
+            	os.makedirs(multiple_faces_dir, exist_ok=True)
+            	of = os.path.join(multiple_faces_dir, fname)
+
+            if not of == None:
+            	imutils.saveImage(cropped_img, of)
+            	return False
+        else:
+            if (face_size < self.min_face_size) or (not self.min_luminosity <= luminance <= self.max_luminosity) or (laplacian < self.laplacian_threshold) or imutils.isbw(cropped_img):
+                return False
+
+            if self.one_face and self.has_multiple_faces(cropped_img):
+                return False
 
         return True
-
-
 
     @staticmethod
     def get_face_mask(landmarks, landmarks_scale, target_scale):

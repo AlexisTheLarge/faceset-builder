@@ -65,13 +65,27 @@ Supported options for the ```collect``` command:
                                      scaled down. Must be at least 1.5 times the
                                      size of --min-face-size. Default is 512.
 
+      --luminosity-range INTEGER...  Range from 0-255 for acceptable face
+                                     brightness. Default is 10-245.
+
+      --laplacian-threshold FLOAT    Threshold for blur detection, values below
+                                     this will be considered blurry. 0 means all
+                                     images pass, 10 might be a good place to
+                                     start. This option is very inconsistent and
+                                     is not recommended, use of the --save-invalid
+                                     option is strongly recommended in
+                                     conjunction. Default is 0.
+
       --one-face                     Discard any cropped images containing more
                                      than one face.
 
       --mask-faces                   Attempt to black out unwanted faces.
 
-      --luminosity-range INTEGER...  Range from 0-255 for acceptable face
-                                     brightness. Default is 10-245.
+      --save-invalid                 Duplicates, corrupted files, and faces that
+                                     fail validation will be saved to
+                                     '<output_dir>/invalid'. Otherwise duplicates
+                                     and corrupted files will be deleted, and
+                                     invalid faces ignored.
 
       --scan-rate FLOAT              Number of frames per second to scan for
                                      reference faces. Default is 0.2 fps (1 frame
@@ -98,6 +112,10 @@ Supported options for the ```collect``` command:
                                      performance loss.
 
       -h, --help                     Show this message and exit.
+
+### Blur Detection
+
+This script provies an option for blur detection using Laplacian Variance (```--laplacian-tolerance```). This has been included because some people have expressed interest in such a feature. I can not personally recommend using said option, since I have had **very** unpredictable results when testing it. It should be considered an experimental feature.
 
 
 # License

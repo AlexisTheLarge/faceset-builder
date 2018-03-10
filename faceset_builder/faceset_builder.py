@@ -1,11 +1,8 @@
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 
-import sys
 import os
 import face_recognition
-import time
-import cv2
 import click
 import re
 from tqdm import tqdm
@@ -41,30 +38,28 @@ def encodeFaces(face_dir):
                 face_encodings.append(target_face[0])
     return face_encodings
 
-def processImages(file_list, face_encodings, args):
+def processImages(file_list, face_encodings, invalid_dir, args):
     min_lumen, max_lumen = args['luminosity_range']
-    pc = Photo_Collector(face_encodings, args['tolerance'], args['min_face_size'], args['crop_size'], min_lumen, max_lumen, args['one_face'], args['mask_faces'])
+    pc = Photo_Collector(face_encodings, args['tolerance'], args['min_face_size'], args['crop_size'], min_lumen, max_lumen, args['laplacian_threshold'], args['one_face'], args['mask_faces'], args['save_invalid'])
+    pc.setInvalidDir(invalid_dir)
 
     image_dir = os.path.join(args['output_dir'], "images")
-    dupedir = os.path.join(image_dir, "duplicates")
-    faces_dir = os.path.join(image_dir, "faces")
 
     os.makedirs(image_dir, exist_ok=True)
-    #os.makedirs(dupedir, exist_ok=True)
-    os.makedirs(faces_dir, exist_ok=True)
     
     print("Removing duplicates...")
-    cleaned_list = pc.cleanDuplicates(file_list, dupedir, 10)
+    cleaned_list = pc.cleanDuplicates(file_list, 10)
     print("Done!\n")
 
     print("Extracting faces...")
-    pc.processPhotos(cleaned_list, faces_dir, args['sample_height'])
+    pc.processPhotos(cleaned_list, image_dir, args['sample_height'])
     print("Done!\n")
 
 
-def processVideos(file_list, face_encodings, args):
+def processVideos(file_list, face_encodings, invalid_dir, args):
     min_lumen, max_lumen = args['luminosity_range']
-    fc = Frame_Collector(face_encodings, args['tolerance'], args['min_face_size'], args['crop_size'], min_lumen, max_lumen, args['one_face'], args['mask_faces'])
+    fc = Frame_Collector(face_encodings, args['tolerance'], args['min_face_size'], args['crop_size'], min_lumen, max_lumen, args['laplacian_threshold'], args['one_face'], args['mask_faces'], args['save_invalid'])
+    fc.setInvalidDir(invalid_dir)
 
     video_dir = os.path.join(args['output_dir'], "videos")
     os.makedirs(video_dir, exist_ok=True)
@@ -91,15 +86,18 @@ def collector(**kwargs):
 
     os.makedirs(kwargs['output_dir'], exist_ok=True)
 
+    invalid_dir = os.path.join(kwargs['output_dir'], "invalid")
+    os.makedirs(invalid_dir, exist_ok=True)
+
     print("Encoding reference faces...")
     face_encodings = encodeFaces(kwargs['reference_dir'])
     print("Done!\n")
     
     print("Processing images...")
-    processImages(image_list, face_encodings, kwargs)
+    processImages(image_list, face_encodings, invalid_dir, kwargs)
 
     print("Processing video files...")
-    processVideos(video_list, face_encodings, kwargs)
+    processVideos(video_list, face_encodings, invalid_dir, kwargs)
     
 def compiler(**kwargs):
     compiled_list = dict()
@@ -114,7 +112,7 @@ def compiler(**kwargs):
     for dir, prefix in zip(dir_list, prefixes):
         full_dir = os.path.join(vid_dir, dir)
         file_list = sorted_aphanumeric(os.listdir(full_dir))
-        #print("{0} | {1}".format(dir, len(file_list)))
+
         for f in file_list:
             if f.endswith(".jpg"):
                 f_path = os.path.join(full_dir, f)
@@ -126,7 +124,7 @@ def compiler(**kwargs):
     for dir in img_dir_list:
         full_dir = os.path.join(img_dir, dir)
         file_list = sorted_aphanumeric(os.listdir(full_dir))
-        #print("{0} | {1}".format(dir, len(file_list)))
+
         for f in file_list:
             if f.endswith(".jpg"):
                 f_path = os.path.join(full_dir, f)
@@ -135,18 +133,11 @@ def compiler(**kwargs):
                     print ("KEY COLLISION!!! {0}".format(f_path))
                 compiled_list[f_path] = o_path
 	
-    #print(len(compiled_list))
     for key, value in tqdm(compiled_list.items()):
        copyfile(key, value)
 
-    #output = '{0}, {1}!'.format(kwargs['greeting'],
-    #                            kwargs['name'])
-    #if kwargs['caps']:
-    #    output = output.upper()
-    #print(output)
-
 @click.group(context_settings=CONTEXT_SETTINGS)
-@click.version_option(version='1.0.0')
+@click.version_option(version='1.1.0')
 def faceset_builder():
     pass
 
@@ -160,10 +151,13 @@ def faceset_builder():
 
 @click.option('--crop-size', type=int, default=512, help='Cropped images larger than this will be scaled down. Must be at least 1.5 times the size of --min-face-size. Default is 512.')
 
+@click.option('--luminosity-range', type=int, nargs=2, default=(10,245), help="Range from 0-255 for acceptable face brightness. Default is 10-245.")
+@click.option('--laplacian-threshold', type=float, default=0, help="Threshold for blur detection, values below this will be considered blurry. 0 means all images pass, 10 might be a good place to start. This option is very inconsistent and is not recommended, use of the --save-invalid option is strongly recommended in conjunction. Default is 0.")
+
 @click.option('--one-face', is_flag=True, help='Discard any cropped images containing more than one face.')
 @click.option('--mask-faces', is_flag=True, help='Attempt to black out unwanted faces.')
 
-@click.option('--luminosity-range', type=int, nargs=2, default=(10,245), help="Range from 0-255 for acceptable face brightness. Default is 10-245.")
+@click.option('--save-invalid', is_flag=True, help="Duplicates, corrupted files, and faces that fail validation will be saved to '<output_dir>/invalid'. Otherwise duplicates and corrupted files will be deleted, and invalid faces ignored.")
 
 @click.option('--scan-rate', type=float, default=0.2, help='Number of frames per second to scan for reference faces. Default is 0.2 fps (1 frame every 5 seconds).')
 @click.option('--capture-rate', type=float, default=5, help='Number of frames per second to extract when reference face has been found. Default is 5.')
@@ -172,7 +166,6 @@ def faceset_builder():
 @click.option('--buffer-size', type=int, default=-1, help='Number of frames to buffer between each scan. Default is the number of frames in one scan interval. (AFFECTS RAM)')
 @click.option('--greedy', is_flag=True, help="While scanning, consider face detected even if it's smaller than --min-face-size. Might capture a few more faces at a potential performance loss.")
 
-#@click.option('--caps', is_flag=True, help='uppercase the output')
 def collect(**kwargs):
     """Go through video files and photographs in OUTPUT_DIR and extract faces matching those found in REFERENCE_DIR. Extracted faces will be placed in OUTPUT_DIR."""
     if (kwargs['min_face_size']*1.5) > kwargs['crop_size']:
