@@ -42,7 +42,10 @@ class Collector:
 
         crop_points = None
         for fenc, floc, flan in zip(face_encodings, face_locations, face_landmarks):
-            result = face_recognition.compare_faces(self.target_faces, fenc, self.tolerance)
+            if (len(self.target_faces) == 0):
+                result = [True]
+            else:
+                result = face_recognition.compare_faces(self.target_faces, fenc, self.tolerance)
 
             #if the face found matches the target
             if any(result):
