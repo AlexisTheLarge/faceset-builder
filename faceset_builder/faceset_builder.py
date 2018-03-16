@@ -121,17 +121,16 @@ def compiler(**kwargs):
                     print ("KEY COLLISION!!! {0}".format(f_path))
                 compiled_list[f_path] = o_path
 				
-    for dir in img_dir_list:
-        full_dir = os.path.join(img_dir, dir)
-        file_list = sorted_aphanumeric(os.listdir(full_dir))
 
-        for f in file_list:
-            if f.endswith(".jpg"):
-                f_path = os.path.join(full_dir, f)
-                o_path = os.path.join(kwargs['output_dir'], "{0}_{1}".format("zzz", f))
-                if f_path in compiled_list:
-                    print ("KEY COLLISION!!! {0}".format(f_path))
-                compiled_list[f_path] = o_path
+    file_list = sorted_aphanumeric(os.listdir(img_dir))
+
+    for f in file_list:
+        if f.endswith(".jpg"):
+            f_path = os.path.join(img_dir, f)
+            o_path = os.path.join(kwargs['output_dir'], "{0}_{1}".format("zzz", f))
+            if f_path in compiled_list:
+                print ("KEY COLLISION!!! {0}".format(f_path))
+            compiled_list[f_path] = o_path
 	
     for key, value in tqdm(compiled_list.items()):
        copyfile(key, value)
