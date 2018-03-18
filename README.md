@@ -117,6 +117,10 @@ Supported options for the ```collect``` command:
 
 This script provies an option for blur detection using Laplacian Variance (```--laplacian-tolerance```). This has been included because some people have expressed interest in such a feature. I can not personally recommend using said option, since I have had **very** unpredictable results when testing it. It should be considered an experimental feature.
 
+## Troubleshooting
+
+If the extraction process is slow (taking multiple seconds per photo), the problem is most likely that dlib isn't compiled with CUDA support. Install dlib from git (https://github.com/davisking/dlib) in order see more info during the installation about why CUDA support might not be working.
+
 
 # License
 
